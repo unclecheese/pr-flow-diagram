@@ -81,7 +81,7 @@ Step:
 | `id` | required | unique within the flow |
 | `lane` | required | one of the flow's `lanes` |
 | `title` | required | node label |
-| `note` | required | side-panel prose; backticks render as code |
+| `note` | required | side-panel prose; backticks render as code, `**double asterisks**` as bold |
 | `next` | required | `[{to, label?}]`, empty for a terminal step; `to` names another step in the flow, no self-edges, no cycles |
 | `file` | optional | repo-relative path, no leading slash; omit it for an infrastructure step (a queue, a poll loop) and the node renders in the muted infra style |
 | `fn` | optional | function or symbol name shown with the file |

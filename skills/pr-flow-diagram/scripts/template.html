@@ -7,139 +7,140 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono&family=Instrument+Serif&display=swap">
 <style>
   :root {
-    --bg: #EEF1F4;
-    --bg-panel: #F7F8FA;
-    --bg-elev: #FFFFFF;
-    --ink: #1B2430;
-    --ink-2: #4A5563;
-    --ink-3: #7B8794;
-    --line: #D5DBE2;
-    --line-2: #E6EAEF;
-    --accent: #C8811F;
-    --accent-ink: #7A4B0A;
-    --focus: #C8811F;
-    --lens-bg: #E4E8ED;
-    --shadow: 0 1px 2px rgba(20,30,40,.06), 0 8px 24px rgba(20,30,40,.08);
-    --chip: #E9EDF1;
-    --mix: #FFFFFF;
+    --bg: #F3F4F6; --bg-panel: #FBFBFC; --bg-elev: #FFFFFF;
+    --ink: #161C24; --ink-2: #434D5A; --ink-3: #6B7684;
+    --line: #DCE0E6; --line-2: #EAEDF1;
+    --accent: #B86E12; --accent-ink: #8A4F06; --focus: #D98A1F;
+    --lens-bg: #F3F4F6; --lane-alt: rgba(20,30,45,.025);
+    --shadow: 0 1px 2px rgba(20,30,40,.05), 0 4px 16px rgba(20,30,40,.06);
+    --chip: #EEF0F3; --code: #F1EEE8;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: #141A22; --bg-panel: #1A212B; --bg-elev: #212A35;
-      --ink: #E8ECF1; --ink-2: #B4BDC8; --ink-3: #7F8A97;
-      --line: #2E3947; --line-2: #26303C;
-      --accent: #E0A34A; --accent-ink: #F0C27A; --focus: #E0A34A;
-      --lens-bg: #10151C;
-      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
-      --chip: #2A3441; --mix: #10151C;
+      --bg: #12161C; --bg-panel: #171C23; --bg-elev: #1E242D;
+      --ink: #ECEFF3; --ink-2: #BAC2CC; --ink-3: #8994A1;
+      --line: #2A323D; --line-2: #222932;
+      --accent: #E8A94E; --accent-ink: #F2C27E; --focus: #E8A94E;
+      --lens-bg: #12161C; --lane-alt: rgba(255,255,255,.02);
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 20px rgba(0,0,0,.3);
+      --chip: #262E38; --code: #2A2620;
     }
   }
   :root[data-theme="dark"] {
-    --bg: #141A22; --bg-panel: #1A212B; --bg-elev: #212A35;
-    --ink: #E8ECF1; --ink-2: #B4BDC8; --ink-3: #7F8A97;
-    --line: #2E3947; --line-2: #26303C;
-    --accent: #E0A34A; --accent-ink: #F0C27A; --focus: #E0A34A;
-    --lens-bg: #10151C;
-    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
-    --chip: #2A3441; --mix: #10151C;
+    --bg: #12161C; --bg-panel: #171C23; --bg-elev: #1E242D;
+    --ink: #ECEFF3; --ink-2: #BAC2CC; --ink-3: #8994A1;
+    --line: #2A323D; --line-2: #222932;
+    --accent: #E8A94E; --accent-ink: #F2C27E; --focus: #E8A94E;
+    --lens-bg: #12161C; --lane-alt: rgba(255,255,255,.02);
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 20px rgba(0,0,0,.3);
+    --chip: #262E38; --code: #2A2620;
   }
-  html,
-  body { margin: 0; padding: 0; height: 100%; }
+  html, body { margin: 0; padding: 0; height: 100%; }
   body {
     background: var(--bg); color: var(--ink);
     font-family: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
-    font-size: 14px; line-height: 1.45;
-    -webkit-font-smoothing: antialiased;
+    font-size: 14px; line-height: 1.55; -webkit-font-smoothing: antialiased;
   }
   * { box-sizing: border-box; }
   button { font: inherit; color: inherit; }
   a { color: var(--accent-ink); }
+  a:hover { color: var(--accent); }
   :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
   .app {
-    position: fixed; inset: 0;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 380px;
-    grid-template-rows: 56px minmax(0, 1fr);
+    position: fixed; inset: 0; display: grid;
+    grid-template-columns: minmax(0, 1fr) 420px;
+    grid-template-rows: 60px minmax(0, 1fr);
     background: var(--bg);
   }
   .top {
-    grid-column: 1 / -1;
-    display: flex; align-items: center; gap: 16px;
-    padding: 0 16px 0 20px;
-    border-bottom: 1px solid var(--line);
-    background: var(--bg-panel);
+    grid-column: 1 / -1; display: flex; align-items: center; gap: 20px;
+    padding: 0 20px 0 24px; border-bottom: 1px solid var(--line); background: var(--bg-panel);
   }
-  .title {
-    font-family: "Instrument Serif", Georgia, serif;
-    font-size: 22px; letter-spacing: .005em; white-space: nowrap;
-  }
-  .title { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-  .title small { font-family: "IBM Plex Sans", sans-serif; font-size: 12px; color: var(--ink-3); margin-left: 10px; letter-spacing: .04em; text-transform: uppercase; font-variant-numeric: tabular-nums; }
-  .controls { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+  .title { display: flex; align-items: baseline; gap: 14px; min-width: 0; white-space: nowrap; }
+  .title .crumb { font-family: "Instrument Serif", Georgia, serif; font-size: 24px; line-height: 1; }
+  #prline { display: flex; align-items: baseline; gap: 10px; min-width: 0; font-size: 14px; color: var(--ink-2); }
+  #prline .num { font-weight: 600; color: var(--ink); background: var(--chip); padding: 2px 8px; border-radius: 6px; font-variant-numeric: tabular-nums; }
+  #prline .pt { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  #prline .sha { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--ink-3); }
+  .controls { display: flex; align-items: center; gap: 10px; margin-left: auto; flex-shrink: 0; }
   .lens { position: relative; background: var(--lens-bg); overflow: hidden; }
-  .lens svg { display: block; width: 100%; height: 100%; }
   .panel {
     background: var(--bg-panel); border-left: 1px solid var(--line);
-    overflow-y: auto; overflow-x: hidden; padding: 18px 18px 28px;
-    display: flex; flex-direction: column; gap: 18px;
+    overflow-y: auto; overflow-x: hidden; padding: 24px 24px 32px;
+    display: flex; flex-direction: column; gap: 24px;
   }
-  .panel h2 { margin: 0; font-size: 18px; font-weight: 600; line-height: 1.25; text-wrap: balance; }
-  .panel .eyebrow { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 6px; }
-  .panel .desc { color: var(--ink-2); margin-top: 8px; max-width: 60ch; }
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-  .chip { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--chip); color: var(--ink-2); font-variant-numeric: tabular-nums; }
-  .chip.add { color: #2E7D4F; }
-  .chip.del { color: #B23A3A; }
-  .chip.rt { text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
-  .note { font-size: 12px; color: var(--ink-3); border-top: 1px solid var(--line-2); padding-top: 12px; }
-  .flowsum { border-bottom: 1px solid var(--line-2); padding-bottom: 16px; }
-  .flowsum p { color: var(--ink-2); font-size: 13px; line-height: 1.5; margin: 8px 0 0; max-width: 60ch; }
-  #flowPick { font: inherit; font-size: 13px; padding: 6px 28px 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg-elev); color: var(--ink); max-width: 320px; }
+  .panel > * { flex-shrink: 0; }
+  .panel h2 { margin: 0; font-size: 20px; font-weight: 600; line-height: 1.3; text-wrap: balance; letter-spacing: -.005em; }
+  .panel .eyebrow { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; margin-bottom: 8px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+  .chip { font-size: 12px; padding: 3px 10px; border-radius: 999px; background: var(--chip); color: var(--ink-2); font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; gap: 6px; }
+  .chip .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .chip.add { color: #2E7D4F; font-weight: 600; }
+  .chip.del { color: #B23A3A; font-weight: 600; }
+  .chip.rt { text-transform: uppercase; letter-spacing: .05em; font-weight: 600; font-size: 11px; }
+  .legend { display: flex; flex-direction: column; gap: 10px; font-size: 12.5px; color: var(--ink-2); border-top: 1px solid var(--line-2); padding-top: 18px; }
+  .legend .row { display: flex; align-items: center; gap: 10px; }
+  .legend .sw { width: 22px; height: 14px; border-radius: 4px; flex-shrink: 0; }
+  .legend kbd { font-family: "IBM Plex Mono", monospace; font-size: 11px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--bg-elev); }
+  .flowsum p { color: var(--ink-2); font-size: 14px; line-height: 1.6; margin: 10px 0 0; text-wrap: pretty; }
+  #flowPick { font: inherit; font-size: 13.5px; font-weight: 500; padding: 7px 30px 7px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg-elev); color: var(--ink); max-width: 340px; cursor: pointer; }
   .flowwrap { position: absolute; inset: 0; display: flex; flex-direction: column; }
   .flowlens { position: relative; flex: 1; min-height: 0; overflow: auto; }
-  .flowlens svg { display: block; width: auto; height: auto; }
-  .lens .flowlens svg { width: auto; height: auto; }
-  .fl-lane-band { fill: var(--ink); fill-opacity: .025; }
-  .fl-lane-band.odd { fill-opacity: 0; }
+  .flowlens svg { display: block; width: auto; height: auto; margin-top: -42px; }
+  .fl-lane-band { fill: var(--lane-alt); }
+  .fl-lane-band.odd { fill: transparent; }
   .fl-lane-line { stroke: var(--line); stroke-width: 1; }
-  .fl-header { position: sticky; top: 0; z-index: 2; display: grid; margin-left: 4px; background: var(--lens-bg); border-bottom: 1px solid var(--line); }
-  .fl-header div { padding: 10px 14px 9px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-weight: 600; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .flowlens svg { margin-top: -36px; }
-  .fl-node { cursor: pointer; }
-  .fl-node rect.box { stroke-width: 1.5; }
+  .fl-header { position: sticky; top: 0; z-index: 2; display: grid; height: 42px; margin-left: 4px; background: color-mix(in srgb, var(--lens-bg) 88%, transparent); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
+  .fl-header div { display: flex; align-items: center; padding: 0 16px; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; font-weight: 600; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fl-node { cursor: pointer; transition: opacity .15s; }
+  .fl-node rect.box { stroke-width: 1.25; }
+  .fl-node:hover rect.box { stroke-width: 2; }
   .fl-node.existing rect.box { fill: var(--bg-elev); stroke: var(--ink-3); stroke-dasharray: 4 3; }
   .fl-node.infra rect.box { fill: transparent; stroke: var(--ink-3); stroke-dasharray: 2 3; }
-  .fl-node text.t { fill: var(--ink); font-size: 12.5px; font-weight: 600; }
+  .fl-node text.t { fill: var(--ink); font-size: 13px; font-weight: 600; }
   .fl-node text.f { fill: var(--ink-2); font-family: "IBM Plex Mono", monospace; font-size: 10.5px; }
-  .fl-node.existing text.f,
-  .fl-node.infra text.f { fill: var(--ink-3); }
+  .fl-node.existing text.f, .fl-node.infra text.f { fill: var(--ink-3); }
   .fl-node.current rect.box { stroke: var(--focus) !important; stroke-width: 2.5; stroke-dasharray: none; }
-  .fl-node.dim { opacity: .38; }
-  .fl-edge { fill: none; stroke: var(--ink-3); stroke-width: 1.4; stroke-opacity: .55; }
-  .fl-edge.into { stroke: var(--focus); stroke-opacity: 1; stroke-width: 2; }
-  .fl-edge.dim { stroke-opacity: .18; }
-  .fl-edge-label { font-size: 11px; fill: var(--ink-2); paint-order: stroke; stroke: var(--lens-bg); stroke-width: 5px; stroke-linejoin: round; }
+  .fl-node rect.halo { fill: none; stroke: var(--focus); stroke-opacity: .25; stroke-width: 6; }
+  .fl-node.dim { opacity: .5; }
+  .fl-node.dim:hover { opacity: .85; }
+  .fl-edge { fill: none; stroke: var(--ink-3); stroke-width: 1.4; stroke-opacity: .6; }
+  .fl-edge.into { stroke: var(--focus); stroke-opacity: 1; stroke-width: 2.25; }
+  .fl-edge.dim { stroke-opacity: .22; }
+  .fl-edge-label { font-size: 11.5px; font-weight: 500; fill: var(--ink-2); paint-order: stroke; stroke: var(--lens-bg); stroke-width: 6px; stroke-linejoin: round; }
   .fl-arrow { fill: var(--ink-3); }
   .fl-arrow.into { fill: var(--focus); }
-  .stepcard { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 10px; padding: 14px; box-shadow: var(--shadow); }
-  .stepcard .k { font-size: 11px; color: var(--ink-3); letter-spacing: .06em; text-transform: uppercase; }
-  .stepcard h3 { margin: 4px 0 8px; font-size: 16px; font-weight: 600; line-height: 1.3; }
-  .stepcard p { margin: 0; color: var(--ink-2); }
-  .stepcard code { font-family: "IBM Plex Mono", monospace; font-size: 12px; background: var(--chip); padding: 0 4px; border-radius: 4px; }
-  .stepcard .path { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; word-break: break-all; margin-top: 10px; color: var(--ink); }
-  .stepcard .actions { display: flex; gap: 12px; margin-top: 12px; font-size: 13px; }
-  .stepcard .actions a,
-  .stepcard .actions button { color: var(--accent-ink); background: none; border: 0; padding: 0; cursor: pointer; font-weight: 500; text-decoration: underline; }
-  .swatch { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 7px; }
-  .steps { display: flex; flex-direction: column; gap: 2px; }
-  .steps button { display: grid; grid-template-columns: 22px minmax(0,1fr); gap: 8px; align-items: baseline; text-align: left; background: none; border: 0; padding: 5px 8px; border-radius: 6px; cursor: pointer; color: var(--ink-2); }
+  .stepcard { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 12px; padding: 20px; box-shadow: var(--shadow); position: relative; overflow: hidden; }
+  .stepcard .bar { position: absolute; left: 0; top: 0; right: 0; height: 4px; }
+  .stepcard .k { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 11px; color: var(--ink-3); letter-spacing: .07em; text-transform: uppercase; font-weight: 600; }
+  .stepcard .k .n { color: var(--ink); }
+  .stepcard .k .sep { width: 3px; height: 3px; border-radius: 50%; background: var(--ink-3); }
+  .stepcard h3 { margin: 8px 0 10px; font-size: 18px; font-weight: 600; line-height: 1.3; text-wrap: balance; }
+  .stepcard p { margin: 0; color: var(--ink-2); font-size: 14.5px; line-height: 1.65; text-wrap: pretty; }
+  .stepcard strong { color: var(--ink); font-weight: 600; }
+  .stepcard code, .flowsum code { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; background: var(--code); color: var(--ink); padding: 1px 5px; border-radius: 4px; }
+  .stepcard .path { margin-top: 16px; padding: 10px 12px; background: var(--chip); border-radius: 8px; font-family: "IBM Plex Mono", monospace; font-size: 12px; line-height: 1.5; word-break: break-all; color: var(--ink-3); }
+  .stepcard .path b { color: var(--ink); font-weight: 500; }
+  .stepcard .path .fn { display: block; margin-top: 2px; color: var(--accent-ink); }
+  .stepcard .actions { display: flex; align-items: center; gap: 8px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line-2); font-size: 13px; }
+  .stepcard .actions a { color: var(--accent-ink); font-weight: 500; text-decoration: none; }
+  .stepcard .actions a:hover { text-decoration: underline; }
+  .stepcard .nav { margin-left: auto; display: flex; gap: 6px; }
+  .stepcard .nav button { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg-elev); cursor: pointer; font-size: 15px; color: var(--ink-2); }
+  .stepcard .nav button:hover:not(:disabled) { background: var(--chip); color: var(--ink); }
+  .stepcard .nav button:disabled { opacity: .35; cursor: default; }
+  .swatch { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+  .steps { display: flex; flex-direction: column; gap: 1px; }
+  .steps button { display: grid; grid-template-columns: 20px 8px minmax(0,1fr) auto; gap: 10px; align-items: center; text-align: left; background: none; border: 0; padding: 7px 10px; border-radius: 8px; cursor: pointer; color: var(--ink-2); font-size: 13.5px; line-height: 1.35; }
   .steps button:hover { background: var(--chip); color: var(--ink); }
-  .steps button[aria-current="true"] { background: var(--chip); color: var(--ink); font-weight: 600; }
-  .steps .i { font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
-  .steps .lane { font-size: 11px; color: var(--ink-3); margin-left: 6px; font-weight: 400; }
+  .steps button[aria-current="true"] { background: var(--bg-elev); color: var(--ink); font-weight: 600; box-shadow: inset 0 0 0 1.5px var(--focus); }
+  .steps .i { font-size: 11.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; text-align: right; }
+  .steps .lane { font-size: 11px; color: var(--ink-3); font-weight: 400; white-space: nowrap; }
+  @media (max-width: 1100px) { .app { grid-template-columns: minmax(0, 1fr) 360px; } }
   @media (max-width: 920px) {
-    .app { grid-template-columns: minmax(0,1fr); grid-template-rows: auto minmax(0,1fr) 40vh; }
-    .top { flex-wrap: wrap; padding: 8px 12px; }
+    .app { grid-template-columns: minmax(0,1fr); grid-template-rows: auto minmax(0,1fr) 45vh; }
+    .top { flex-wrap: wrap; padding: 10px 14px; }
+    #prline .pt { display: none; }
     .panel { border-left: 0; border-top: 1px solid var(--line); }
   }
 </style>
@@ -147,7 +148,7 @@
 <body data-view="flows">
 <div class="app">
   <header class="top">
-    <div class="title" id="title">Flow diagram<small id="prline"></small></div>
+    <div class="title" id="title"><span class="crumb">Flow diagram</span><span id="prline"></span></div>
     <div class="controls">
       <select id="flowPick" aria-label="Flow"></select>
     </div>
@@ -188,9 +189,9 @@ const panel = document.getElementById("panel");
 const flowlens = document.getElementById("flowlens");
 const flowPick = document.getElementById("flowPick");
 let flow = null, order = [], cur = 0, flNodes = new Map(), flEdges = [];
-const NH = 60, ROWH = 128, TOP = 44, PADX = 12;
+const NH = 72, ROWH = 132, TOP = 58, PADX = 16;
 
-document.getElementById("prline").textContent = `PR #${DOC.pr.number} — ${DOC.pr.title} @ ${DOC.pr.headSha.slice(0, 10)}`;
+document.getElementById("prline").innerHTML = `<span class="num">#${DOC.pr.number}</span><span class="pt">${esc(DOC.pr.title)}</span><span class="sha">${esc(DOC.pr.headSha.slice(0, 7))}</span>`;
 DOC.flows.forEach((f) => { const o = document.createElement("option"); o.value = f.id; o.textContent = f.name; flowPick.appendChild(o); });
 flowPick.addEventListener("change", () => loadFlow(flowPick.value));
 flowPick.hidden = DOC.flows.length < 2;
@@ -250,7 +251,7 @@ function stepKind(s) { return !s.file ? "infra" : s.inStack ? "new" : "existing"
 function renderFlow() {
   const rect = flowlens.getBoundingClientRect();
   const lanes = flow.lanes.length;
-  const laneW = Math.max(150, Math.floor((rect.width - 8) / lanes));
+  const laneW = Math.max(190, Math.floor((rect.width - 8) / lanes));
   const width = laneW * lanes + 8;
   const NW = laneW - PADX * 2;
   const maxRow = Math.max(...[...flNodes.values()].map((n) => n.row));
@@ -302,17 +303,18 @@ function renderFlow() {
     const s = n.step, kind = stepKind(s), color = stepColor(s);
     const isCur = s === current;
     const dim = !isCur && !intoIds.has(s.id);
-    const maxChars = Math.floor((n.w - 28) / 7.2);
+    const maxChars = Math.floor((n.w - 32) / 7.3);
     const title = wrap(s.title, maxChars, 2);
     const file = s.file ? s.file.split("/").pop() + (s.fn ? " · " + s.fn : "") : "infrastructure";
-    const fmax = Math.floor((n.w - 28) / 6.4);
+    const fmax = Math.floor((n.w - 32) / 6.4);
     const fileShort = file.length > fmax ? file.slice(0, fmax - 1) + "…" : file;
-    const ty = n.y + (title.length === 1 ? 25 : 20);
+    const ty = n.y + (title.length === 1 ? 29 : 23);
     parts.push(`<g class="fl-node ${kind}${isCur ? " current" : ""}${dim ? " dim" : ""}" data-step="${esc(s.id)}" tabindex="0" role="button" aria-label="${esc(s.title)}">
-      <rect class="box" x="${n.x}" y="${n.y}" width="${n.w}" height="${NH}" rx="8" fill="${color}" fill-opacity="${kind === "new" ? 0.16 : 1}" stroke="${color}"/>
-      ${kind === "new" ? `<rect x="${n.x}" y="${n.y}" width="5" height="${NH}" rx="2.5" fill="${color}"/>` : ""}
-      <text class="t" x="${n.x + 14}" y="${ty}">${title.map((l, i) => `<tspan x="${n.x + 14}" dy="${i ? 15 : 0}">${esc(l)}</tspan>`).join("")}</text>
-      <text class="f" x="${n.x + 14}" y="${n.y + NH - 9}">${esc(fileShort)}</text>
+      ${isCur ? `<rect class="halo" x="${n.x - 3}" y="${n.y - 3}" width="${n.w + 6}" height="${NH + 6}" rx="11"/>` : ""}
+      <rect class="box" x="${n.x}" y="${n.y}" width="${n.w}" height="${NH}" rx="9" fill="${color}" fill-opacity="${kind === "new" ? 0.14 : 1}" stroke="${color}"/>
+      ${kind === "new" ? `<rect x="${n.x + 1}" y="${n.y + 10}" width="4" height="${NH - 20}" rx="2" fill="${color}"/>` : ""}
+      <text class="t" x="${n.x + 16}" y="${ty}">${title.map((l, i) => `<tspan x="${n.x + 16}" dy="${i ? 17 : 0}">${esc(l)}</tspan>`).join("")}</text>
+      <text class="f" x="${n.x + 16}" y="${n.y + NH - 12}">${esc(fileShort)}</text>
     </g>`);
   }
   parts.push(`</g></svg>`);
@@ -338,7 +340,7 @@ function gotoStep(i) {
 }
 
 function md(text) {
-  return esc(text).replace(/`([^`]+)`/g, "<code>$1</code>");
+  return esc(text).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
 }
 
 function renderFlowPanel() {
@@ -349,7 +351,7 @@ function renderFlowPanel() {
   const where = s.trail && s.trail.length ? s.trail.join(" › ") : null;
   const chips = [
     where ? `<span class="chip">${esc(where)}</span>` : "",
-    s.concern ? `<span class="chip" style="color:${color}">${esc(s.concern)}</span>` : "",
+    s.concern ? `<span class="chip"><i class="dot" style="background:${color}"></i>${esc(s.concern)}</span>` : "",
     s.pr ? `<span class="chip">PR ${esc(s.pr)}</span>` : "",
     s.added != null ? `<span class="chip add">+${fmt(s.added)}</span>` : "",
     s.deleted != null ? `<span class="chip del">−${fmt(s.deleted)}</span>` : "",
@@ -361,18 +363,24 @@ function renderFlowPanel() {
     <h2>${esc(flow.name)}</h2>
     ${flow.summary ? `<p>${md(flow.summary)}</p>` : ""}
   </section>
-  <section class="stepcard" style="border-top: 3px solid ${color}">
-    <div class="k">Step ${cur + 1} · ${esc(s.lane)} · ${kindLabel}</div>
+  <section class="stepcard">
+    <div class="bar" style="background:${color}"></div>
+    <div class="k"><span class="n">Step ${cur + 1} of ${order.length}</span><i class="sep"></i><span>${esc(s.lane)}</span><i class="sep"></i><span>${kindLabel}</span></div>
     <h3>${esc(s.title)}</h3>
     <p>${md(s.note)}</p>
-    ${s.file ? `<div class="path">${esc(s.file)}${s.fn ? `<br><span style="color:var(--ink-3)">${esc(s.fn)}()</span>` : ""}</div>` : ""}
+    ${s.file ? `<div class="path">${s.file.includes("/") ? esc(s.file.slice(0, s.file.lastIndexOf("/") + 1)) : ""}<b>${esc(s.file.split("/").pop())}</b>${s.fn ? `<span class="fn">${esc(s.fn)}()</span>` : ""}</div>` : ""}
     ${chips ? `<div class="chips">${chips}</div>` : ""}
-    ${s.file && GITHUB ? `<div class="actions"><a href="${GITHUB}${encodeURI(s.file)}" target="_blank" rel="noopener">Open on GitHub ↗</a></div>` : ""}
+    <div class="actions">${s.file && GITHUB ? `<a href="${GITHUB}${encodeURI(s.file)}" target="_blank" rel="noopener">Open on GitHub ↗</a>` : ""}<div class="nav"><button data-go="-1" aria-label="Previous step" ${cur === 0 ? "disabled" : ""}>←</button><button data-go="1" aria-label="Next step" ${cur === order.length - 1 ? "disabled" : ""}>→</button></div></div>
   </section>
-  <section><div class="eyebrow">Steps</div><div class="steps">${order.map((st, i) => `<button data-i="${i}" ${i === cur ? 'aria-current="true"' : ""}><span class="i">${i + 1}</span><span><i class="swatch" style="background:${stepColor(st)};${stepKind(st) !== "new" ? "opacity:.45" : ""}"></i>${esc(st.title)}<span class="lane">${esc(st.lane)}</span></span></button>`).join("")}</div></section>
-  <p class="note">Solid, colour-filled steps are files this PR adds or changes, coloured by concern. Dashed steps are existing code or infrastructure the flow passes through. Use ← → to walk the flow.</p>`;
+  <section><div class="eyebrow">All steps</div><div class="steps">${order.map((st, i) => `<button data-i="${i}" ${i === cur ? 'aria-current="true"' : ""}><span class="i">${i + 1}</span><i class="swatch" style="background:${stepColor(st)};${stepKind(st) !== "new" ? "opacity:.4" : ""}"></i><span>${esc(st.title)}</span><span class="lane">${esc(st.lane)}</span></button>`).join("")}</div></section>
+  <section class="legend">
+    <div class="row"><span class="sw" style="background:color-mix(in srgb, #3E7CB1 16%, transparent);border:1.25px solid #3E7CB1"></span>Added or changed in this PR, coloured by concern</div>
+    <div class="row"><span class="sw" style="border:1.25px dashed var(--ink-3)"></span>Existing code or infrastructure the flow passes through</div>
+    <div class="row"><kbd>←</kbd><kbd>→</kbd>Walk the flow</div>
+  </section>`;
   panel.innerHTML = html;
   panel.querySelectorAll(".steps button").forEach((b) => b.addEventListener("click", () => gotoStep(Number(b.dataset.i))));
+  panel.querySelectorAll(".nav button").forEach((b) => b.addEventListener("click", () => gotoStep(cur + Number(b.dataset.go))));
 }
 
 document.addEventListener("keydown", (e) => {

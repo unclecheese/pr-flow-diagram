@@ -57,7 +57,7 @@
         "id": { "type": "string", "minLength": 1, "description": "Unique within the flow." },
         "lane": { "type": "string", "minLength": 1 },
         "title": { "type": "string", "minLength": 1, "description": "Short label on the node box." },
-        "note": { "type": "string", "description": "Panel prose; backticks render as code." },
+        "note": { "type": "string", "description": "Panel prose; backticks render as code, **double asterisks** as bold." },
         "next": {
           "type": "array",
           "items": {

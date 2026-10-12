@@ -110,7 +110,7 @@
           "file": "api/src/routes/products.ts",
           "fn": "updateProduct",
           "title": "Handle the edit",
-          "note": "Wraps the write in a transaction and registers the invalidation as an after-commit hook rather than calling it inline.",
+          "note": "Wraps the write in a transaction and registers the invalidation as an **after-commit** hook rather than calling it inline.",
           "concern": "Invalidation order",
           "runtime": "node",
           "inStack": true,
