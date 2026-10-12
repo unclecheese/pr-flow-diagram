@@ -1,0 +1,12 @@
+{
+  "name": "pr-flow-diagram",
+  "private": true,
+  "description": "Agent skill that renders a pull request's control flow as an interactive swim-lane diagram",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  }
+}

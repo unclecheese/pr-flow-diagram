@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "flow-doc.schema.json",
+  "title": "Flow document",
+  "description": "One PR's execution flows for the flow-lens renderer. scripts/lib/validate.mjs is the enforcement of this schema (the tool is dependency-free); keep the two in step.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "pr", "flows"],
+  "properties": {
+    "schema": { "const": 1 },
+    "pr": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["number", "title", "headSha"],
+      "properties": {
+        "number": { "type": "integer", "exclusiveMinimum": 0 },
+        "title": { "type": "string", "minLength": 1 },
+        "headSha": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
+        "repo": { "type": "string", "pattern": "^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$", "description": "GitHub owner/name. Steps link to their file at headSha in this repo; without it the page has no source links." }
+      }
+    },
+    "flows": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/flow" }
+    }
+  },
+  "$defs": {
+    "flow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "summary", "lanes", "steps"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "description": "Unique across the document; used by the flow picker." },
+        "name": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string" },
+        "lanes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Left-to-right swimlane order; every step's lane must appear here."
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/step" },
+          "description": "step.next edges must form a DAG; the renderer walks it topologically."
+        }
+      }
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "lane", "title", "note", "next"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "description": "Unique within the flow." },
+        "lane": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1, "description": "Short label on the node box." },
+        "note": { "type": "string", "description": "Panel prose; backticks render as code." },
+        "next": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["to"],
+            "properties": {
+              "to": { "type": "string", "minLength": 1, "description": "A step id in the same flow; never the step itself." },
+              "label": { "type": "string", "description": "Edge caption, e.g. the branch condition." }
+            }
+          }
+        },
+        "file": { "type": "string", "minLength": 1, "description": "Repo-relative path. Absent means an infrastructure step (dashed outline, no GitHub link)." },
+        "fn": { "type": "string", "description": "Function or symbol within the file." },
+        "concern": { "type": "string", "description": "What a reviewer must look at; colours the node deterministically by first appearance." },
+        "added": { "type": "integer", "minimum": 0, "description": "Lines added in this file by the PR." },
+        "deleted": { "type": "integer", "minimum": 0 },
+        "runtime": { "type": "string", "description": "Where the step runs (client, node, db, worker, ...); shown as a chip." },
+        "inStack": { "type": "boolean", "description": "true = the PR added or changed this step (solid, coloured); false/absent = existing code the flow passes through (dashed)." },
+        "pr": { "type": "string", "description": "Attribution chip when a step belongs to another PR, e.g. \"#121\"." },
+        "trail": { "type": "array", "items": { "type": "string" }, "description": "Breadcrumb chip, broadest first." }
+      }
+    }
+  }
+}

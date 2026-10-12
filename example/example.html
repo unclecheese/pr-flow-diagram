@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Flow: feat(products): cache product pages in Redis and invalidate on edit</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono&family=Instrument+Serif&display=swap">
+<style>
+  :root {
+    --bg: #EEF1F4;
+    --bg-panel: #F7F8FA;
+    --bg-elev: #FFFFFF;
+    --ink: #1B2430;
+    --ink-2: #4A5563;
+    --ink-3: #7B8794;
+    --line: #D5DBE2;
+    --line-2: #E6EAEF;
+    --accent: #C8811F;
+    --accent-ink: #7A4B0A;
+    --focus: #C8811F;
+    --lens-bg: #E4E8ED;
+    --shadow: 0 1px 2px rgba(20,30,40,.06), 0 8px 24px rgba(20,30,40,.08);
+    --chip: #E9EDF1;
+    --mix: #FFFFFF;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141A22; --bg-panel: #1A212B; --bg-elev: #212A35;
+      --ink: #E8ECF1; --ink-2: #B4BDC8; --ink-3: #7F8A97;
+      --line: #2E3947; --line-2: #26303C;
+      --accent: #E0A34A; --accent-ink: #F0C27A; --focus: #E0A34A;
+      --lens-bg: #10151C;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+      --chip: #2A3441; --mix: #10151C;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141A22; --bg-panel: #1A212B; --bg-elev: #212A35;
+    --ink: #E8ECF1; --ink-2: #B4BDC8; --ink-3: #7F8A97;
+    --line: #2E3947; --line-2: #26303C;
+    --accent: #E0A34A; --accent-ink: #F0C27A; --focus: #E0A34A;
+    --lens-bg: #10151C;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+    --chip: #2A3441; --mix: #10151C;
+  }
+  html,
+  body { margin: 0; padding: 0; height: 100%; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+    font-size: 14px; line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  * { box-sizing: border-box; }
+  button { font: inherit; color: inherit; }
+  a { color: var(--accent-ink); }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .app {
+    position: fixed; inset: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 380px;
+    grid-template-rows: 56px minmax(0, 1fr);
+    background: var(--bg);
+  }
+  .top {
+    grid-column: 1 / -1;
+    display: flex; align-items: center; gap: 16px;
+    padding: 0 16px 0 20px;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg-panel);
+  }
+  .title {
+    font-family: "Instrument Serif", Georgia, serif;
+    font-size: 22px; letter-spacing: .005em; white-space: nowrap;
+  }
+  .title { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .title small { font-family: "IBM Plex Sans", sans-serif; font-size: 12px; color: var(--ink-3); margin-left: 10px; letter-spacing: .04em; text-transform: uppercase; font-variant-numeric: tabular-nums; }
+  .controls { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+  .lens { position: relative; background: var(--lens-bg); overflow: hidden; }
+  .lens svg { display: block; width: 100%; height: 100%; }
+  .panel {
+    background: var(--bg-panel); border-left: 1px solid var(--line);
+    overflow-y: auto; overflow-x: hidden; padding: 18px 18px 28px;
+    display: flex; flex-direction: column; gap: 18px;
+  }
+  .panel h2 { margin: 0; font-size: 18px; font-weight: 600; line-height: 1.25; text-wrap: balance; }
+  .panel .eyebrow { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 6px; }
+  .panel .desc { color: var(--ink-2); margin-top: 8px; max-width: 60ch; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .chip { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--chip); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .chip.add { color: #2E7D4F; }
+  .chip.del { color: #B23A3A; }
+  .chip.rt { text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+  .note { font-size: 12px; color: var(--ink-3); border-top: 1px solid var(--line-2); padding-top: 12px; }
+  .flowsum { border-bottom: 1px solid var(--line-2); padding-bottom: 16px; }
+  .flowsum p { color: var(--ink-2); font-size: 13px; line-height: 1.5; margin: 8px 0 0; max-width: 60ch; }
+  #flowPick { font: inherit; font-size: 13px; padding: 6px 28px 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg-elev); color: var(--ink); max-width: 320px; }
+  .flowwrap { position: absolute; inset: 0; display: flex; flex-direction: column; }
+  .flowlens { position: relative; flex: 1; min-height: 0; overflow: auto; }
+  .flowlens svg { display: block; width: auto; height: auto; }
+  .lens .flowlens svg { width: auto; height: auto; }
+  .fl-lane-band { fill: var(--ink); fill-opacity: .025; }
+  .fl-lane-band.odd { fill-opacity: 0; }
+  .fl-lane-line { stroke: var(--line); stroke-width: 1; }
+  .fl-header { position: sticky; top: 0; z-index: 2; display: grid; margin-left: 4px; background: var(--lens-bg); border-bottom: 1px solid var(--line); }
+  .fl-header div { padding: 10px 14px 9px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-weight: 600; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .flowlens svg { margin-top: -36px; }
+  .fl-node { cursor: pointer; }
+  .fl-node rect.box { stroke-width: 1.5; }
+  .fl-node.existing rect.box { fill: var(--bg-elev); stroke: var(--ink-3); stroke-dasharray: 4 3; }
+  .fl-node.infra rect.box { fill: transparent; stroke: var(--ink-3); stroke-dasharray: 2 3; }
+  .fl-node text.t { fill: var(--ink); font-size: 12.5px; font-weight: 600; }
+  .fl-node text.f { fill: var(--ink-2); font-family: "IBM Plex Mono", monospace; font-size: 10.5px; }
+  .fl-node.existing text.f,
+  .fl-node.infra text.f { fill: var(--ink-3); }
+  .fl-node.current rect.box { stroke: var(--focus) !important; stroke-width: 2.5; stroke-dasharray: none; }
+  .fl-node.dim { opacity: .38; }
+  .fl-edge { fill: none; stroke: var(--ink-3); stroke-width: 1.4; stroke-opacity: .55; }
+  .fl-edge.into { stroke: var(--focus); stroke-opacity: 1; stroke-width: 2; }
+  .fl-edge.dim { stroke-opacity: .18; }
+  .fl-edge-label { font-size: 11px; fill: var(--ink-2); paint-order: stroke; stroke: var(--lens-bg); stroke-width: 5px; stroke-linejoin: round; }
+  .fl-arrow { fill: var(--ink-3); }
+  .fl-arrow.into { fill: var(--focus); }
+  .stepcard { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 10px; padding: 14px; box-shadow: var(--shadow); }
+  .stepcard .k { font-size: 11px; color: var(--ink-3); letter-spacing: .06em; text-transform: uppercase; }
+  .stepcard h3 { margin: 4px 0 8px; font-size: 16px; font-weight: 600; line-height: 1.3; }
+  .stepcard p { margin: 0; color: var(--ink-2); }
+  .stepcard code { font-family: "IBM Plex Mono", monospace; font-size: 12px; background: var(--chip); padding: 0 4px; border-radius: 4px; }
+  .stepcard .path { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; word-break: break-all; margin-top: 10px; color: var(--ink); }
+  .stepcard .actions { display: flex; gap: 12px; margin-top: 12px; font-size: 13px; }
+  .stepcard .actions a,
+  .stepcard .actions button { color: var(--accent-ink); background: none; border: 0; padding: 0; cursor: pointer; font-weight: 500; text-decoration: underline; }
+  .swatch { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 7px; }
+  .steps { display: flex; flex-direction: column; gap: 2px; }
+  .steps button { display: grid; grid-template-columns: 22px minmax(0,1fr); gap: 8px; align-items: baseline; text-align: left; background: none; border: 0; padding: 5px 8px; border-radius: 6px; cursor: pointer; color: var(--ink-2); }
+  .steps button:hover { background: var(--chip); color: var(--ink); }
+  .steps button[aria-current="true"] { background: var(--chip); color: var(--ink); font-weight: 600; }
+  .steps .i { font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .steps .lane { font-size: 11px; color: var(--ink-3); margin-left: 6px; font-weight: 400; }
+  @media (max-width: 920px) {
+    .app { grid-template-columns: minmax(0,1fr); grid-template-rows: auto minmax(0,1fr) 40vh; }
+    .top { flex-wrap: wrap; padding: 8px 12px; }
+    .panel { border-left: 0; border-top: 1px solid var(--line); }
+  }
+</style>
+</head>
+<body data-view="flows">
+<div class="app">
+  <header class="top">
+    <div class="title" id="title">Flow diagram<small id="prline"></small></div>
+    <div class="controls">
+      <select id="flowPick" aria-label="Flow"></select>
+    </div>
+  </header>
+  <main class="lens">
+    <div class="flowwrap"><div class="flowlens" id="flowlens"></div></div>
+  </main>
+  <aside class="panel" id="panel"></aside>
+</div>
+<script>
+"use strict";
+const DOC = /*__DATA__*/ {"schema":1,"pr":{"number":128,"title":"feat(products): cache product pages in Redis and invalidate on edit","headSha":"3f9c2a71d84e5b06c1a7f2e98d43b5c60a1e7d29","repo":"example-org/storefront"},"flows":[{"id":"read-through-cache","name":"Read: product page through the cache","summary":"A product page read now tries Redis first and only falls through to Postgres on a miss. Check that the cache key carries everything the response varies on, or two shoppers can be served each other's page.","lanes":["Browser","API","Redis","Postgres"],"steps":[{"id":"page","lane":"Browser","file":"web/src/pages/Product.tsx","fn":"ProductPage","title":"Request the product","note":"Unchanged: the page fetches `GET /products/:id` with the shopper's currency in the `Accept-Currency` header.","runtime":"client","next":[{"to":"route"}]},{"id":"route","lane":"API","file":"api/src/routes/products.ts","fn":"getProduct","title":"Build the cache key","note":"The key is `product:{id}:{currency}`. Currency is in it because prices are converted server-side; locale is not, because copy is translated in the browser.","concern":"Cache key","runtime":"node","inStack":true,"added":18,"deleted":4,"next":[{"to":"lookup"}]},{"id":"lookup","lane":"Redis","file":"api/src/cache/productCache.ts","fn":"readProduct","title":"Look the page up","note":"A `GET` on the key. A Redis error is logged and treated as a miss, so an outage degrades to the old uncached path instead of a 500.","concern":"Cache key","runtime":"~1 ms","inStack":true,"added":24,"next":[{"to":"respond","label":"hit"},{"to":"query","label":"miss"}]},{"id":"query","lane":"Postgres","file":"api/src/db/products.ts","fn":"findProductById","title":"Load from the database","note":"Unchanged query: the product, its variants and the converted price in one round trip.","runtime":"~40 ms","next":[{"to":"fill"}]},{"id":"fill","lane":"Redis","file":"api/src/cache/productCache.ts","fn":"writeProduct","title":"Fill the cache","note":"`SET` with a 10 minute TTL. The TTL is the backstop for any write path that forgets to invalidate; the edit flow is the primary way entries leave.","concern":"TTL","inStack":true,"added":11,"next":[{"to":"respond"}]},{"id":"respond","lane":"API","file":"api/src/routes/products.ts","fn":"getProduct","title":"Return the page","note":"Sets `X-Cache: hit|miss` so the hit rate shows up in the access logs without new metrics.","inStack":true,"added":3,"next":[]}]},{"id":"write-invalidates","name":"Write: an edit invalidates the cache","summary":"Saving a product deletes its cached pages after the transaction commits, then queues a warm-up. The order is the thing to check: invalidating before the commit lets a concurrent read refill the cache with the old row.","lanes":["Browser","API","Postgres","Redis","Worker"],"steps":[{"id":"save","lane":"Browser","file":"web/src/pages/EditProduct.tsx","fn":"onSubmit","title":"Save the product","note":"Unchanged: the admin form sends `PATCH /products/:id`.","runtime":"client","next":[{"to":"update"}]},{"id":"update","lane":"API","file":"api/src/routes/products.ts","fn":"updateProduct","title":"Handle the edit","note":"Wraps the write in a transaction and registers the invalidation as an after-commit hook rather than calling it inline.","concern":"Invalidation order","runtime":"node","inStack":true,"added":9,"deleted":2,"next":[{"to":"persist"}]},{"id":"persist","lane":"Postgres","file":"api/src/db/products.ts","fn":"updateProductById","title":"Write the row","note":"Unchanged `UPDATE`. The after-commit hook only fires if this commits; a rollback leaves the cache alone.","next":[{"to":"invalidate","label":"commit"}]},{"id":"invalidate","lane":"Redis","file":"api/src/cache/productCache.ts","fn":"invalidateProduct","title":"Delete every currency's entry","note":"`SCAN` for `product:{id}:*` and `DEL` the matches. One key per currency, so a single delete would miss most of them.","concern":"Invalidation order","inStack":true,"added":16,"next":[{"to":"enqueue"}]},{"id":"enqueue","lane":"Worker","title":"Warm-up job queued","note":"A job on the existing background queue, so the edit returns without waiting for the cache to refill.","runtime":"async","next":[{"to":"warm"}]},{"id":"warm","lane":"Worker","file":"worker/src/jobs/warmProduct.ts","fn":"warmProduct","title":"Re-render the default currency","note":"Refills only the store's default currency; the rest fill on first read. The job runner itself landed separately.","concern":"TTL","inStack":true,"added":27,"pr":"#121","trail":["jobs","cache"],"next":[]}]}]};
+
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmt = (n) => n.toLocaleString("en-NZ");
+function wrap(text, maxChars, maxLines) {
+  if (maxChars < 4) return [];
+  const words = text.split(" ");
+  const lines = [];
+  let cur = "";
+  for (const w of words) {
+    if (!cur) cur = w;
+    else if ((cur + " " + w).length <= maxChars) cur += " " + w;
+    else { lines.push(cur); cur = w; }
+  }
+  if (cur) lines.push(cur);
+  if (lines.length > maxLines) {
+    const kept = lines.slice(0, maxLines);
+    kept[maxLines - 1] = kept[maxLines - 1].slice(0, Math.max(1, maxChars - 1)) + "…";
+    return kept;
+  }
+  return lines.map((l) => (l.length > maxChars ? l.slice(0, maxChars - 1) + "…" : l));
+}
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const GITHUB = DOC.pr.repo ? `https://github.com/${DOC.pr.repo}/blob/${DOC.pr.headSha}/` : null;
+
+const panel = document.getElementById("panel");
+const flowlens = document.getElementById("flowlens");
+const flowPick = document.getElementById("flowPick");
+let flow = null, order = [], cur = 0, flNodes = new Map(), flEdges = [];
+const NH = 60, ROWH = 128, TOP = 44, PADX = 12;
+
+document.getElementById("prline").textContent = `PR #${DOC.pr.number} — ${DOC.pr.title} @ ${DOC.pr.headSha.slice(0, 10)}`;
+DOC.flows.forEach((f) => { const o = document.createElement("option"); o.value = f.id; o.textContent = f.name; flowPick.appendChild(o); });
+flowPick.addEventListener("change", () => loadFlow(flowPick.value));
+flowPick.hidden = DOC.flows.length < 2;
+
+const PALETTE = ["#3E7CB1", "#2F9E8F", "#5E8F3E", "#D0762E", "#C9A227", "#B8553E", "#7B5EA7", "#4C8C9C", "#A67C9E", "#8F6B3D", "#6F7E8C", "#8C8C7A"];
+const CONCERN_COLOR = new Map();
+DOC.flows.forEach((f) => f.steps.forEach((s) => {
+  if (s.concern && !CONCERN_COLOR.has(s.concern)) CONCERN_COLOR.set(s.concern, PALETTE[CONCERN_COLOR.size % PALETTE.length]);
+}));
+function stepColor(s) {
+  if (!s.file || !s.inStack) return "#8A94A0";
+  return CONCERN_COLOR.get(s.concern) || "#8A94A0";
+}
+
+function loadFlow(id) {
+  flow = DOC.flows.find((f) => f.id === id);
+  flowPick.value = id;
+  layoutFlow();
+  cur = 0;
+  renderFlow();
+}
+
+function layoutFlow() {
+  const steps = flow.steps;
+  const byId = new Map(steps.map((s) => [s.id, s]));
+  const indeg = new Map(steps.map((s) => [s.id, 0]));
+  steps.forEach((s) => s.next.forEach((n) => indeg.set(n.to, indeg.get(n.to) + 1)));
+  const row = new Map(steps.map((s) => [s.id, 0]));
+  const q = steps.filter((s) => indeg.get(s.id) === 0).map((s) => s.id);
+  const deg = new Map(indeg);
+  const topo = [];
+  while (q.length) {
+    const id = q.shift(); topo.push(id);
+    for (const n of byId.get(id).next) {
+      row.set(n.to, Math.max(row.get(n.to), row.get(id) + 1));
+      deg.set(n.to, deg.get(n.to) - 1);
+      if (deg.get(n.to) === 0) q.push(n.to);
+    }
+  }
+  const taken = new Set();
+  for (const id of topo) {
+    const s = byId.get(id);
+    let r = row.get(id);
+    while (taken.has(s.lane + "|" + r)) r++;
+    row.set(id, r); taken.add(s.lane + "|" + r);
+    for (const n of s.next) row.set(n.to, Math.max(row.get(n.to), r + 1));
+  }
+  order = topo.map((id) => byId.get(id)).sort((a, b) => row.get(a.id) - row.get(b.id) || flow.lanes.indexOf(a.lane) - flow.lanes.indexOf(b.lane));
+  flNodes = new Map();
+  steps.forEach((s) => flNodes.set(s.id, { step: s, row: row.get(s.id), lane: flow.lanes.indexOf(s.lane) }));
+  flEdges = [];
+  steps.forEach((s) => s.next.forEach((n) => flEdges.push({ from: flNodes.get(s.id), to: flNodes.get(n.to), label: n.label })));
+}
+
+function stepKind(s) { return !s.file ? "infra" : s.inStack ? "new" : "existing"; }
+
+function renderFlow() {
+  const rect = flowlens.getBoundingClientRect();
+  const lanes = flow.lanes.length;
+  const laneW = Math.max(150, Math.floor((rect.width - 8) / lanes));
+  const width = laneW * lanes + 8;
+  const NW = laneW - PADX * 2;
+  const maxRow = Math.max(...[...flNodes.values()].map((n) => n.row));
+  const height = TOP + (maxRow + 1) * ROWH + 24;
+  for (const n of flNodes.values()) { n.x = 4 + n.lane * laneW + PADX; n.y = TOP + n.row * ROWH + (ROWH - NH) / 2; n.w = NW; }
+  const current = order[cur];
+  const intoIds = new Set(flEdges.filter((e) => e.to.step === current).map((e) => e.from.step.id));
+  const parts = [];
+  parts.push(`<svg id="flsvg" width="${width}" height="${Math.max(height, rect.height)}" role="img" aria-label="${esc(flow.name)} execution flow">`);
+  parts.push(`<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-arrow"/></marker><marker id="arrIn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-arrow into"/></marker></defs>`);
+  flow.lanes.forEach((ln, i) => {
+    const x = 4 + i * laneW;
+    parts.push(`<rect class="fl-lane-band${i % 2 ? " odd" : ""}" x="${x}" y="0" width="${laneW}" height="${Math.max(height, rect.height)}"/>`);
+    if (i) parts.push(`<line class="fl-lane-line" x1="${x}" x2="${x}" y1="0" y2="${Math.max(height, rect.height)}"/>`);
+  });
+  parts.push(`<g id="fledges">`);
+  for (const e of flEdges) {
+    const into = e.to.step === current;
+    const dimmed = !into && e.from.step !== current;
+    const x1 = e.from.x + e.from.w / 2, y1 = e.from.y + NH, x2 = e.to.x + e.to.w / 2, y2 = e.to.y;
+    let d, lx, ly, anchor = "middle";
+    const skips = e.to.row - e.from.row > 1;
+    if (y2 > y1 && e.from.lane === e.to.lane && skips) {
+      // same lane, skipping rows: run down the gutter beside the boxes instead of through them
+      const right = e.from.lane < lanes - 1;
+      const gx = right ? e.from.x + e.from.w + PADX : e.from.x - PADX;
+      const sx = right ? e.from.x + e.from.w : e.from.x, sy = e.from.y + NH * 0.7;
+      const tx = right ? e.to.x + e.to.w : e.to.x, ty = e.to.y + NH * 0.3;
+      d = `M${sx} ${sy} C${gx} ${sy} ${gx} ${sy} ${gx} ${sy + 22} L${gx} ${ty - 22} C${gx} ${ty} ${gx} ${ty} ${tx} ${ty}`;
+      lx = gx + (right ? 6 : -6); ly = (sy + ty) / 2 + 4; anchor = right ? "start" : "end";
+    } else if (y2 > y1 && x2 === x1) {
+      d = `M${x1} ${y1} L${x2} ${y2}`;
+      lx = x1 + 8; ly = (y1 + y2) / 2 + 4; anchor = "start";
+    } else if (y2 > y1) {
+      // cross-lane: drop, run across at mid-gap, drop into the target
+      const my = (y1 + y2) / 2;
+      d = `M${x1} ${y1} C${x1} ${my} ${x1} ${my} ${(x1 + x2) / 2} ${my} C${x2} ${my} ${x2} ${my} ${x2} ${y2}`;
+      lx = (x1 + x2) / 2; ly = my - 7; anchor = "middle";
+    } else {
+      const sx = e.from.x + e.from.w, sy = e.from.y + NH / 2, tx = e.to.x, ty = e.to.y + NH / 2;
+      const mx = (sx + tx) / 2;
+      d = `M${sx} ${sy} C${mx} ${sy} ${mx} ${ty} ${tx} ${ty}`; lx = mx; ly = (sy + ty) / 2 - 6;
+    }
+    parts.push(`<path class="fl-edge${into ? " into" : dimmed ? " dim" : ""}" d="${d}" marker-end="url(#${into ? "arrIn" : "arr"})"/>`);
+    if (e.label) parts.push(`<text class="fl-edge-label" x="${lx}" y="${ly}" text-anchor="${anchor}">${esc(e.label)}</text>`);
+  }
+  parts.push(`</g><g id="flnodes">`);
+  for (const n of flNodes.values()) {
+    const s = n.step, kind = stepKind(s), color = stepColor(s);
+    const isCur = s === current;
+    const dim = !isCur && !intoIds.has(s.id);
+    const maxChars = Math.floor((n.w - 28) / 7.2);
+    const title = wrap(s.title, maxChars, 2);
+    const file = s.file ? s.file.split("/").pop() + (s.fn ? " · " + s.fn : "") : "infrastructure";
+    const fmax = Math.floor((n.w - 28) / 6.4);
+    const fileShort = file.length > fmax ? file.slice(0, fmax - 1) + "…" : file;
+    const ty = n.y + (title.length === 1 ? 25 : 20);
+    parts.push(`<g class="fl-node ${kind}${isCur ? " current" : ""}${dim ? " dim" : ""}" data-step="${esc(s.id)}" tabindex="0" role="button" aria-label="${esc(s.title)}">
+      <rect class="box" x="${n.x}" y="${n.y}" width="${n.w}" height="${NH}" rx="8" fill="${color}" fill-opacity="${kind === "new" ? 0.16 : 1}" stroke="${color}"/>
+      ${kind === "new" ? `<rect x="${n.x}" y="${n.y}" width="5" height="${NH}" rx="2.5" fill="${color}"/>` : ""}
+      <text class="t" x="${n.x + 14}" y="${ty}">${title.map((l, i) => `<tspan x="${n.x + 14}" dy="${i ? 15 : 0}">${esc(l)}</tspan>`).join("")}</text>
+      <text class="f" x="${n.x + 14}" y="${n.y + NH - 9}">${esc(fileShort)}</text>
+    </g>`);
+  }
+  parts.push(`</g></svg>`);
+  // sticky lane header
+  const header = `<div class="fl-header" style="grid-template-columns: repeat(${lanes}, ${laneW}px)">${flow.lanes.map((l) => `<div>${esc(l)}</div>`).join("")}</div>`;
+  flowlens.innerHTML = header + parts.join("");
+  flowlens.querySelectorAll(".fl-node").forEach((g) => {
+    const go = () => gotoStep(order.findIndex((s) => s.id === g.dataset.step));
+    g.addEventListener("click", go);
+    g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
+  });
+  renderFlowPanel();
+  const n = flNodes.get(current.id);
+  if (n.y < flowlens.scrollTop + TOP + 10 || n.y + NH > flowlens.scrollTop + rect.height - 20) {
+    flowlens.scrollTo({ top: Math.max(0, n.y - rect.height / 2 + NH / 2), behavior: reduceMotion ? "auto" : "smooth" });
+  }
+}
+
+function gotoStep(i) {
+  if (i < 0 || i >= order.length) return;
+  cur = i;
+  renderFlow();
+}
+
+function md(text) {
+  return esc(text).replace(/`([^`]+)`/g, "<code>$1</code>");
+}
+
+function renderFlowPanel() {
+  const s = order[cur];
+  const kind = stepKind(s);
+  const color = stepColor(s);
+  const kindLabel = kind === "new" ? "New in this PR" : kind === "existing" ? "Existing code" : "Infrastructure";
+  const where = s.trail && s.trail.length ? s.trail.join(" › ") : null;
+  const chips = [
+    where ? `<span class="chip">${esc(where)}</span>` : "",
+    s.concern ? `<span class="chip" style="color:${color}">${esc(s.concern)}</span>` : "",
+    s.pr ? `<span class="chip">PR ${esc(s.pr)}</span>` : "",
+    s.added != null ? `<span class="chip add">+${fmt(s.added)}</span>` : "",
+    s.deleted != null ? `<span class="chip del">−${fmt(s.deleted)}</span>` : "",
+    s.runtime ? `<span class="chip rt">${esc(s.runtime)}</span>` : "",
+  ].join("");
+  const flowIdx = DOC.flows.indexOf(flow);
+  let html = `<section class="flowsum">
+    <div class="eyebrow">${DOC.flows.length > 1 ? `Flow ${flowIdx + 1} of ${DOC.flows.length}` : "Flow"}</div>
+    <h2>${esc(flow.name)}</h2>
+    ${flow.summary ? `<p>${md(flow.summary)}</p>` : ""}
+  </section>
+  <section class="stepcard" style="border-top: 3px solid ${color}">
+    <div class="k">Step ${cur + 1} · ${esc(s.lane)} · ${kindLabel}</div>
+    <h3>${esc(s.title)}</h3>
+    <p>${md(s.note)}</p>
+    ${s.file ? `<div class="path">${esc(s.file)}${s.fn ? `<br><span style="color:var(--ink-3)">${esc(s.fn)}()</span>` : ""}</div>` : ""}
+    ${chips ? `<div class="chips">${chips}</div>` : ""}
+    ${s.file && GITHUB ? `<div class="actions"><a href="${GITHUB}${encodeURI(s.file)}" target="_blank" rel="noopener">Open on GitHub ↗</a></div>` : ""}
+  </section>
+  <section><div class="eyebrow">Steps</div><div class="steps">${order.map((st, i) => `<button data-i="${i}" ${i === cur ? 'aria-current="true"' : ""}><span class="i">${i + 1}</span><span><i class="swatch" style="background:${stepColor(st)};${stepKind(st) !== "new" ? "opacity:.45" : ""}"></i>${esc(st.title)}<span class="lane">${esc(st.lane)}</span></span></button>`).join("")}</div></section>
+  <p class="note">Solid, colour-filled steps are files this PR adds or changes, coloured by concern. Dashed steps are existing code or infrastructure the flow passes through. Use ← → to walk the flow.</p>`;
+  panel.innerHTML = html;
+  panel.querySelectorAll(".steps button").forEach((b) => b.addEventListener("click", () => gotoStep(Number(b.dataset.i))));
+}
+
+document.addEventListener("keydown", (e) => {
+  if (["SELECT", "INPUT", "TEXTAREA"].includes(document.activeElement?.tagName)) return;
+  if (e.key === "ArrowRight") { e.preventDefault(); gotoStep(cur + 1); }
+  if (e.key === "ArrowLeft") { e.preventDefault(); gotoStep(cur - 1); }
+});
+window.addEventListener("resize", () => { if (flow) renderFlow(); });
+
+loadFlow(DOC.flows[0].id);
+</script>
+</body>
+</html>

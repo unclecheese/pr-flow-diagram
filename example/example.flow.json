@@ -1,0 +1,167 @@
+{
+  "schema": 1,
+  "pr": {
+    "number": 128,
+    "title": "feat(products): cache product pages in Redis and invalidate on edit",
+    "headSha": "3f9c2a71d84e5b06c1a7f2e98d43b5c60a1e7d29",
+    "repo": "example-org/storefront"
+  },
+  "flows": [
+    {
+      "id": "read-through-cache",
+      "name": "Read: product page through the cache",
+      "summary": "A product page read now tries Redis first and only falls through to Postgres on a miss. Check that the cache key carries everything the response varies on, or two shoppers can be served each other's page.",
+      "lanes": ["Browser", "API", "Redis", "Postgres"],
+      "steps": [
+        {
+          "id": "page",
+          "lane": "Browser",
+          "file": "web/src/pages/Product.tsx",
+          "fn": "ProductPage",
+          "title": "Request the product",
+          "note": "Unchanged: the page fetches `GET /products/:id` with the shopper's currency in the `Accept-Currency` header.",
+          "runtime": "client",
+          "next": [{ "to": "route" }]
+        },
+        {
+          "id": "route",
+          "lane": "API",
+          "file": "api/src/routes/products.ts",
+          "fn": "getProduct",
+          "title": "Build the cache key",
+          "note": "The key is `product:{id}:{currency}`. Currency is in it because prices are converted server-side; locale is not, because copy is translated in the browser.",
+          "concern": "Cache key",
+          "runtime": "node",
+          "inStack": true,
+          "added": 18,
+          "deleted": 4,
+          "next": [{ "to": "lookup" }]
+        },
+        {
+          "id": "lookup",
+          "lane": "Redis",
+          "file": "api/src/cache/productCache.ts",
+          "fn": "readProduct",
+          "title": "Look the page up",
+          "note": "A `GET` on the key. A Redis error is logged and treated as a miss, so an outage degrades to the old uncached path instead of a 500.",
+          "concern": "Cache key",
+          "runtime": "~1 ms",
+          "inStack": true,
+          "added": 24,
+          "next": [
+            { "to": "respond", "label": "hit" },
+            { "to": "query", "label": "miss" }
+          ]
+        },
+        {
+          "id": "query",
+          "lane": "Postgres",
+          "file": "api/src/db/products.ts",
+          "fn": "findProductById",
+          "title": "Load from the database",
+          "note": "Unchanged query: the product, its variants and the converted price in one round trip.",
+          "runtime": "~40 ms",
+          "next": [{ "to": "fill" }]
+        },
+        {
+          "id": "fill",
+          "lane": "Redis",
+          "file": "api/src/cache/productCache.ts",
+          "fn": "writeProduct",
+          "title": "Fill the cache",
+          "note": "`SET` with a 10 minute TTL. The TTL is the backstop for any write path that forgets to invalidate; the edit flow is the primary way entries leave.",
+          "concern": "TTL",
+          "inStack": true,
+          "added": 11,
+          "next": [{ "to": "respond" }]
+        },
+        {
+          "id": "respond",
+          "lane": "API",
+          "file": "api/src/routes/products.ts",
+          "fn": "getProduct",
+          "title": "Return the page",
+          "note": "Sets `X-Cache: hit|miss` so the hit rate shows up in the access logs without new metrics.",
+          "inStack": true,
+          "added": 3,
+          "next": []
+        }
+      ]
+    },
+    {
+      "id": "write-invalidates",
+      "name": "Write: an edit invalidates the cache",
+      "summary": "Saving a product deletes its cached pages after the transaction commits, then queues a warm-up. The order is the thing to check: invalidating before the commit lets a concurrent read refill the cache with the old row.",
+      "lanes": ["Browser", "API", "Postgres", "Redis", "Worker"],
+      "steps": [
+        {
+          "id": "save",
+          "lane": "Browser",
+          "file": "web/src/pages/EditProduct.tsx",
+          "fn": "onSubmit",
+          "title": "Save the product",
+          "note": "Unchanged: the admin form sends `PATCH /products/:id`.",
+          "runtime": "client",
+          "next": [{ "to": "update" }]
+        },
+        {
+          "id": "update",
+          "lane": "API",
+          "file": "api/src/routes/products.ts",
+          "fn": "updateProduct",
+          "title": "Handle the edit",
+          "note": "Wraps the write in a transaction and registers the invalidation as an after-commit hook rather than calling it inline.",
+          "concern": "Invalidation order",
+          "runtime": "node",
+          "inStack": true,
+          "added": 9,
+          "deleted": 2,
+          "next": [{ "to": "persist" }]
+        },
+        {
+          "id": "persist",
+          "lane": "Postgres",
+          "file": "api/src/db/products.ts",
+          "fn": "updateProductById",
+          "title": "Write the row",
+          "note": "Unchanged `UPDATE`. The after-commit hook only fires if this commits; a rollback leaves the cache alone.",
+          "next": [{ "to": "invalidate", "label": "commit" }]
+        },
+        {
+          "id": "invalidate",
+          "lane": "Redis",
+          "file": "api/src/cache/productCache.ts",
+          "fn": "invalidateProduct",
+          "title": "Delete every currency's entry",
+          "note": "`SCAN` for `product:{id}:*` and `DEL` the matches. One key per currency, so a single delete would miss most of them.",
+          "concern": "Invalidation order",
+          "inStack": true,
+          "added": 16,
+          "next": [{ "to": "enqueue" }]
+        },
+        {
+          "id": "enqueue",
+          "lane": "Worker",
+          "title": "Warm-up job queued",
+          "note": "A job on the existing background queue, so the edit returns without waiting for the cache to refill.",
+          "runtime": "async",
+          "next": [{ "to": "warm" }]
+        },
+        {
+          "id": "warm",
+          "lane": "Worker",
+          "file": "worker/src/jobs/warmProduct.ts",
+          "fn": "warmProduct",
+          "title": "Re-render the default currency",
+          "note": "Refills only the store's default currency; the rest fill on first read. The job runner itself landed separately.",
+          "concern": "TTL",
+          "inStack": true,
+          "added": 27,
+          "pr": "#121",
+          "trail": ["jobs", "cache"],
+          "next": []
+        }
+      ]
+    }
+  ]
+}
