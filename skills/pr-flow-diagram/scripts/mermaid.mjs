@@ -1,19 +1,21 @@
 #!/usr/bin/env node
 /**
- * Emits a flow document as Mermaid flowcharts, one per flow.
+ * Emits a flow document as a markdown fragment for a PR description or
+ * comment: one collapsed <details> per flow, holding its Mermaid flowchart
+ * and the steps the author flagged with a concern.
  *
- *   node mermaid.mjs <input.json>
+ *   node mermaid.mjs <input.json> [output.md]
  *
  * Mermaid is what GitHub renders natively in markdown, so this is the view
- * that shows up inline in a PR comment rather than inside a downloaded zip.
- * It is an overview, not a replacement for the HTML page: no side panel, no
- * concern colours (an explicit fill would misread in one of GitHub's two
- * themes), no click-through to source.
+ * that shows up inline on the PR itself. It is an overview, not a
+ * replacement for the HTML page: no side panel, no concern colours (an
+ * explicit fill would misread in one of GitHub's two themes), no keyboard
+ * walkthrough.
  *
  * Deterministic, like the HTML build: node ids come from position, never
  * from a hash or iteration order.
  */
-import { readFileSync, realpathSync } from "node:fs"
+import { readFileSync, realpathSync, writeFileSync } from "node:fs"
 import { pathToFileURL } from "node:url"
 
 import { validateDoc } from "./lib/validate.mjs"
@@ -74,10 +76,68 @@ export const oversized = (diagrams) =>
     .filter(({ mermaid }) => mermaid.length > RENDER_BUDGET)
     .map(({ flow }) => flow.id)
 
+/** GitHub rejects a PR body or comment longer than this. */
+export const BODY_LIMIT = 65536
+
+const html = (text) =>
+  String(text)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replace(/\s+/g, " ")
+    .trim()
+
+/** <summary> is HTML, so markdown backticks would show literally. */
+const inline = (text) => html(text).replace(/`([^`]+)`/g, "<code>$1</code>")
+
+const where = (step, pr) => {
+  if (!step.file) return ""
+  const code = step.fn ? `\`${step.file}\` \`${step.fn}\`` : `\`${step.file}\``
+  if (!pr.repo) return ` (${code})`
+  return ` ([${code}](https://github.com/${pr.repo}/blob/${pr.headSha}/${encodeURI(step.file)}))`
+}
+
+const reviewFocus = (flow, pr) => {
+  const byConcern = new Map()
+  for (const s of flow.steps) {
+    if (!s.concern) continue
+    if (!byConcern.has(s.concern)) byConcern.set(s.concern, [])
+    byConcern.get(s.concern).push(s)
+  }
+  if (byConcern.size === 0) return []
+  const lines = ["", "**Review focus**", ""]
+  for (const [concern, steps] of byConcern) {
+    lines.push(`- **${html(concern)}**`)
+    for (const s of steps) lines.push(`  - ${html(s.title)}${where(s, pr)}`)
+  }
+  return lines
+}
+
+export const flowToDetails = (flow, pr) => {
+  const summary = flow.summary
+    ? `<b>${inline(flow.name)}</b>: ${inline(flow.summary)}`
+    : `<b>${inline(flow.name)}</b>`
+  // GitHub only parses markdown inside <details> after a blank line.
+  return [
+    "<details>",
+    `<summary>${summary}</summary>`,
+    "",
+    "```mermaid",
+    flowToMermaid(flow),
+    "```",
+    ...reviewFocus(flow, pr),
+    "",
+    "</details>",
+  ].join("\n")
+}
+
+export const docToDetails = (doc) =>
+  doc.flows.map((f) => flowToDetails(f, doc.pr)).join("\n\n") + "\n"
+
 const main = () => {
-  const [input] = process.argv.slice(2)
+  const [input, output] = process.argv.slice(2)
   if (!input) {
-    console.error("usage: node mermaid.mjs <input.json>")
+    console.error("usage: node mermaid.mjs <input.json> [output.md]")
     process.exit(2)
   }
   let doc
@@ -92,19 +152,18 @@ const main = () => {
     console.error(`invalid flow document:\n  ${errors.join("\n  ")}`)
     process.exit(1)
   }
-  const diagrams = docToMermaid(doc)
-  for (const { flow, mermaid } of diagrams) {
-    console.log(`## ${flow.name}\n`)
-    console.log(flow.summary ? `${flow.summary}\n` : "")
-    console.log("```mermaid")
-    console.log(mermaid)
-    console.log("```\n")
-  }
-  const big = oversized(diagrams)
+  const md = docToDetails(doc)
+  if (output) writeFileSync(output, md)
+  else process.stdout.write(md)
+  const big = oversized(docToMermaid(doc))
   if (big.length > 0) {
     console.error(
       `warning: ${JSON.stringify(big)} exceed ${RENDER_BUDGET} characters; GitHub will refuse to draw them`,
     )
+  }
+  console.error(`${doc.flows.length} flow(s), ${md.length} characters`)
+  if (md.length > BODY_LIMIT) {
+    console.error(`warning: over GitHub's ${BODY_LIMIT}-character limit for a PR body or comment`)
   }
 }
 

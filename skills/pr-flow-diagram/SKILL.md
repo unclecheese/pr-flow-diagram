@@ -1,6 +1,6 @@
 ---
 name: pr-flow-diagram
-description: Render a PR's control flow as an interactive lane diagram. Use when asked to diagram, visualise, or produce a flow lens for a pull request or branch diff.
+description: Render a PR's control flow as an interactive lane diagram, or as collapsible Mermaid for the PR description. Use when asked to diagram, visualise, or produce a flow lens for a pull request or branch diff, or for flow diagrams in a PR body or comment.
 ---
 
 # PR flow diagram
@@ -50,31 +50,43 @@ workflow uses the GitHub CLI (`gh`).
    - `concern` marks where the reviewer should slow down; reuse the same
      string across related steps so they share a colour.
    - `added`/`deleted` from the diff hunks when they help signal weight.
-4. **Build the page.**
+4. **Pick the output.** An explicit argument wins: `page` or `mermaid`.
+   Otherwise read the request: a diagram headed for a PR description or
+   comment is `mermaid`; anything else is `page`. Both when asked.
+5. **Build it.** Either way, fix validation errors (they're line items) and
+   check the printed flow count against the entry points from step 2.
+
+   **page**: one self-contained HTML file with lanes, a step panel and
+   keyboard walkthrough.
 
    ```
    node scripts/build.mjs <doc.flow.json> <tmp>/flow-pr-<n>.html --check-files .
    ```
 
-   That writes one self-contained HTML file; hand back its path and offer
-   to open it. If you have an Artifact tool that publishes HTML pages, add
-   `--artifact` and publish the file instead, with a 🧭 favicon and a title
-   naming the PR (`PR <n> Flow Lens`). `--artifact` drops the document
-   skeleton the tool supplies itself, and the published URL is the better
-   deliverable: it opens in a browser instead of being downloaded.
+   Hand back its path and offer to open it. If you have an Artifact tool
+   that publishes HTML pages, add `--artifact` and publish the file
+   instead, with a 🧭 favicon and a title naming the PR (`PR <n> Flow
+   Lens`). `--artifact` drops the document skeleton the tool supplies
+   itself, and the published URL is the better deliverable: it opens in a
+   browser instead of being downloaded. `--check-files` warnings are
+   advisory; expect them when the local checkout isn't on the PR's head.
 
-   The build prints the flow count -- check it against the entry points you
-   listed in step 2. Fix any validation errors (they're line items).
-   `--check-files` warnings are advisory; expect them when the local
-   checkout isn't on the PR's head.
-5. **Offer the Mermaid version when it belongs in a conversation.**
-   `node scripts/mermaid.mjs <doc.flow.json>`
-   prints the same flows as Mermaid, which GitHub renders inline in a PR
-   comment or issue, and which pastes into chat. It is an overview -- no side
-   panel, no source links, no concern colours -- so it complements the
-   page rather than replacing it. Post it with
-   `gh pr comment <n> --body-file <file>` when the flows belong on the PR
-   itself.
+   **mermaid**: a markdown fragment with one collapsed `<details>` per
+   flow -- the summary on the `<summary>` line, the Mermaid diagram inside,
+   then a **Review focus** list of steps grouped by `concern`.
 
-Write the JSON and HTML to a temp directory unless the user wants them
+   ```
+   node scripts/mermaid.mjs <doc.flow.json> <tmp>/flow-pr-<n>.md
+   ```
+
+   `concern` is the only source of Review focus, so tag every step a
+   reviewer should slow down on. For a PR description, drop the fragment
+   under a `## Flows` heading, or into the section a repo's PR template
+   provides. For an existing PR, show the user the new body and get a yes
+   before `gh pr edit <n> --body-file <file>` or
+   `gh pr comment <n> --body-file <file>`. Size warnings mean GitHub will
+   refuse to draw a diagram or reject the body: split the offending flow or
+   trim step titles.
+
+Write the JSON and output to a temp directory unless the user wants them
 committed.

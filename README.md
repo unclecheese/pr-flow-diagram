@@ -12,7 +12,7 @@ An agent skill that turns a pull request into an interactive swim-lane diagram o
 npx skills add unclecheese/pr-flow-diagram
 ```
 
-Add `-g` to install it for your user instead of the current project. Then ask your agent to "diagram PR 123".
+Add `-g` to install it for your user instead of the current project. Then ask your agent to "diagram PR 123", or to "add flow diagrams to the description of PR 123" for the Mermaid version.
 
 ## What you get
 
@@ -21,7 +21,7 @@ Add `-g` to install it for your user instead of the current project. Then ask yo
 - Steps the PR touches are solid and coloured by reviewer concern. Existing code and infrastructure are dashed
 - A side panel per step with the file, function, line counts, a note and a link to the file at the PR's head
 - Arrow keys to walk the flow, light and dark themes
-- A Mermaid version for a PR comment, which GitHub renders inline
+- A Mermaid version for the PR description or a comment: one collapsible section per flow, with a review focus list linking to the files that need attention
 
 ## How it works
 

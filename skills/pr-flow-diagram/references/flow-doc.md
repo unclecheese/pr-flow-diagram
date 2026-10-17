@@ -30,24 +30,29 @@ node scripts/build.mjs <input.flow.json> <output.html> \
 
 ## Mermaid output
 
-The HTML page needs a browser. For the times a diagram
-belongs inline in a conversation instead, `scripts/mermaid.mjs` emits the
-same document as Mermaid flowcharts, which GitHub renders natively:
+The HTML page needs a browser. For the times a diagram belongs on the PR
+itself, `scripts/mermaid.mjs` emits the same document as a markdown
+fragment GitHub renders natively:
 
 ```
-node scripts/mermaid.mjs <input.flow.json>
+node scripts/mermaid.mjs <input.flow.json> [output.md]
 ```
 
-Lanes become `subgraph`s, `next` becomes labelled edges, and steps the PR
-did not touch are dashed. It is an overview, not a replacement: no side
-panel, no source links, no keyboard walkthrough, and no concern colours --
-GitHub picks the Mermaid theme from the reader's colour scheme, so a
-hardcoded fill would lose its contrast in one of the two.
+Each flow becomes a collapsed `<details>`: the flow's name and summary on
+the `<summary>` line, then a Mermaid flowchart, then a **Review focus**
+list of steps grouped by `concern`. With `pr.repo` set, each listed file
+links to GitHub at `headSha`. Without an output path it prints to stdout.
 
-The output is markdown -- a heading, the summary and a fenced diagram per
-flow -- so it pastes straight into a PR comment, an issue or chat. Past
-`RENDER_BUDGET` characters GitHub stops drawing a fence and shows a bare
-"unable to render" box, so the CLI warns on stderr when a flow crosses it.
+In the diagram, lanes become `subgraph`s, `next` becomes labelled edges,
+and steps the PR did not touch are dashed. It is an overview, not a
+replacement: no side panel, no keyboard walkthrough, and no concern
+colours -- GitHub picks the Mermaid theme from the reader's colour scheme,
+so a hardcoded fill would lose its contrast in one of the two. The Review
+focus list carries the concerns instead.
+
+The CLI warns on stderr when a flow passes `RENDER_BUDGET` characters
+(GitHub shows a bare "unable to render" box instead of the diagram) or the
+fragment passes `BODY_LIMIT` (GitHub rejects the PR body or comment).
 
 ## Schema
 

@@ -4,7 +4,14 @@ import { dirname, join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 
-import { docToMermaid, flowToMermaid, oversized, RENDER_BUDGET } from "../skills/pr-flow-diagram/scripts/mermaid.mjs"
+import {
+  docToDetails,
+  docToMermaid,
+  flowToDetails,
+  flowToMermaid,
+  oversized,
+  RENDER_BUDGET,
+} from "../skills/pr-flow-diagram/scripts/mermaid.mjs"
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const example = () =>
@@ -86,4 +93,69 @@ test("a diagram over the render budget is reported, not silently posted", () => 
   assert.deepEqual(oversized(docToMermaid(doc)), [])
   doc.flows[0].steps[0].title = "x".repeat(RENDER_BUDGET)
   assert.deepEqual(oversized(docToMermaid(doc)), [doc.flows[0].id])
+})
+
+test("one collapsed block per flow, in document order", () => {
+  const doc = example()
+  const out = docToDetails(doc)
+  assert.equal(out.match(/^<details>$/gm).length, doc.flows.length)
+  assert.equal(out.match(/^<\/details>$/gm).length, doc.flows.length)
+  assert.deepEqual(
+    [...out.matchAll(/<summary><b>(.*?)<\/b>/g)].map((m) => m[1]),
+    doc.flows.map((f) => f.name),
+  )
+})
+
+test("a blank line follows the summary so GitHub parses the fence", () => {
+  const doc = example()
+  const out = flowToDetails(doc.flows[0], doc.pr)
+  assert.match(out, /<\/summary>\n\n```mermaid\n/)
+  assert.match(out, /\n\n<\/details>$/)
+})
+
+test("summary text is HTML-escaped and backticks become code", () => {
+  const doc = example()
+  doc.flows[0].name = "a <b> & `c`"
+  doc.flows[0].summary = "uses `x<y`"
+  const out = flowToDetails(doc.flows[0], doc.pr)
+  assert.ok(
+    out.includes("<summary><b>a &lt;b&gt; &amp; <code>c</code></b>: uses <code>x&lt;y</code></summary>"),
+    out,
+  )
+})
+
+test("review focus lists concerned steps only, grouped by concern", () => {
+  const doc = example()
+  const flow = doc.flows[0]
+  const out = flowToDetails(flow, doc.pr)
+  const concerned = flow.steps.filter((s) => s.concern)
+  assert.ok(concerned.length > 0, "the example should exercise concerns")
+  assert.ok(out.includes("**Review focus**"))
+  for (const c of new Set(concerned.map((s) => s.concern))) assert.ok(out.includes(`- **${c}**`), c)
+  for (const s of flow.steps) {
+    assert.equal(out.includes(`  - ${s.title}`), Boolean(s.concern), s.id)
+  }
+})
+
+test("review focus links files at the PR head only when repo is set", () => {
+  const doc = example()
+  const step = doc.flows[0].steps.find((s) => s.concern && s.file)
+  doc.pr.repo = "acme/widgets"
+  assert.ok(
+    flowToDetails(doc.flows[0], doc.pr).includes(
+      `(https://github.com/acme/widgets/blob/${doc.pr.headSha}/${step.file})`,
+    ),
+  )
+  delete doc.pr.repo
+  assert.ok(!flowToDetails(doc.flows[0], doc.pr).includes("https://github.com/"))
+})
+
+test("a flow with no concerns has no review focus section", () => {
+  const doc = example()
+  for (const s of doc.flows[0].steps) delete s.concern
+  assert.ok(!flowToDetails(doc.flows[0], doc.pr).includes("Review focus"))
+})
+
+test("the details fragment is deterministic", () => {
+  assert.equal(docToDetails(example()), docToDetails(example()))
 })
